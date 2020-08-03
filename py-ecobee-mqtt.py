@@ -14,6 +14,7 @@
 '''
 import requests
 import os
+import sys
 from configparser import ConfigParser
 import paho.mqtt.client as mqtt
 
@@ -46,21 +47,24 @@ def main():
     # Read Config File parameters
     readConfig()
 
-    # Connect to Ecobee and Create 
+    # Connect to Mqtt
     client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
 
-    print(mqttAddr + ':' + str(mqttPort))
-
-    client.connect(mqttAddr, mqttPort, 60)
-    #client.connect('10.10.10.41', 1883, 60)
+    try:
+        print('Attempting to connect to mqtt server: ' + mqttAddr + 
+            ':' + str(mqttPort))
+        client.connect(mqttAddr, mqttPort, 60)
+    except:
+        print('failed to connect to mqtt.... aborting script')
+        sys.exit()
 
     client.loop_forever()
 
 # call back for client connection to mqtt
 def on_connect(client, userdata, flags, rc):
-    print('Connected with result code: ' + str(rc))
+    print('Mqtt Connection result code: ' + str(rc))
 
     # subscribing in on_connect means if we lose the connection and 
     # reconnect then subscriptions will be renewed
