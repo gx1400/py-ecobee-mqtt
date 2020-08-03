@@ -122,6 +122,14 @@ def ecobee_authorize(ecobee_service):
         authorize_response.ecobee_pin))
     input()
 
+def ecobee_checktokens():
+    now_utc = datetime.now(pytz.utc)
+    if now_utc > ecobee_service.refresh_token_expires_on:
+        ecobee_authorize(ecobee_service)
+        ecobee_request_tokens(ecobee_service)
+    elif now_utc > ecobee_service.access_token_expires_on:
+        token_response = ecobee_refresh_tokens(ecobee_service)
+
 # function for connecting to ecobee service
 def ecobee_connect():
     global dbFile
@@ -147,12 +155,7 @@ def ecobee_connect():
     else:
         logger.debug('access token: ' + ecobee_service.access_token)
     
-    now_utc = datetime.now(pytz.utc)
-    if now_utc > ecobee_service.refresh_token_expires_on:
-        ecobee_authorize(ecobee_service)
-        ecobee_request_tokens(ecobee_service)
-    elif now_utc > ecobee_service.access_token_expires_on:
-        token_response = ecobee_refresh_tokens(ecobee_service)
+    ecobee_checktokens()
 
 def ecobee_mqtt():
     selection = Selection(selection_type=SelectionType.REGISTERED.value, selection_match='', include_alerts=False,
@@ -163,8 +166,18 @@ def ecobee_mqtt():
                       include_runtime=True, include_security_settings=False, include_sensors=True,
                       include_settings=False, include_technician=False, include_utility=False, include_version=False,
                       include_weather=False)
-    thermostat_response = ecobee_service.request_thermostats(selection)
-    #logger.debug(thermostat_response.pretty_format())
+    
+    # proactively try to refresh tokens, but if we hit the sweet spot, we'll try to react
+    ecobee_checktokens()
+    
+    #get thermostat data
+    try:
+        thermostat_response = ecobee_service.request_thermostats(selection)
+        #logger.debug(thermostat_response.pretty_format())
+    except EcobeeApiException as e:
+        if e.status_code == 14:
+            token_response = ecobee_service.refresh_tokens()
+
     assert thermostat_response.status.code == 0, 'Failure while executing request_thermostats:\n{0}'.format(
         thermostat_response.pretty_format())
     
@@ -181,21 +194,24 @@ def ecobee_mqtt():
             for cap in sensor.capability:
                 pubtopic = topicname + cap.type
                 logger.debug(pubtopic)
+
+                parsedValue = cap.value
+                if (cap.type == 'temperature'):
+                    parsedValue = str(int(cap.value) / 10)
+
                 msg = {
                     'thermostat' : item.name,
                     'room': roomname,
                     'code': sensor.code,
                     'type': cap.type,
-                    'value': cap.value
+                    'value': parsedValue
                 }
                 logger.debug(msg)
                 client.publish(pubtopic, json.dumps(msg), 0, False)
 
         #log equipment status
         eStatusList = item.equipment_status.split(',')
-        logger.debug('Equipment status: ' + json.dumps(eStatusList))
-        fanOn = ('fan' in eStatusList)
-        cool1On = ('compCool1' in eStatusList)
+        #logger.debug('Equipment status: ' + json.dumps(eStatusList))
         msg = {
             'name': item.name,
             'fan': ('fan' in eStatusList),
@@ -221,7 +237,18 @@ def ecobee_mqtt():
 
 
         #log runtime information
-        #logger.debug(item.runtime)
+        logger.debug(item.runtime)
+        msg = {
+            'name': item.name,
+            'desiredHeat': item.runtime.desired_heat /10,
+            'desiredCool': item.runtime.desired_cool /10,
+            'desiredHum': item.runtime.desired_humidity ,
+            'desiredDeHum': item.runtime.desired_dehumidity,
+            'desiredFanMode': item.runtime.desired_fan_mode
+        }
+        rtMsg = json.dumps(msg)
+        logger.debug(rtMsg)
+
 
 def donothing():
     nothing = None   
