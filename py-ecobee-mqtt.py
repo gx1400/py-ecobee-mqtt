@@ -89,16 +89,21 @@ def main():
 
     #client.loop_forever()
     client.loop_start()
+    loopct = 0
 
     while True:
-        logger.info('Start of loop')
-        time.sleep(10)
-        ecobee_mqtt()
-
         if terminate:
             mqtt_endloop()
             break
-
+        
+        if (loopct >= 10):
+            logger.info('Start of loop')
+            ecobee_mqtt()
+            loopct = 0
+        else:
+            time.sleep(1)
+            loopct += 1
+            
     logger.info('Exiting program')
 
 def ecobee_authorize(ecobee_service):
@@ -186,7 +191,9 @@ def ecobee_mqtt():
         #logger.debug('equipmentStatus: ' + item.equipment_status)
         #logger.debug('name: ' + item.name)
         #logger.debug(item.runtime)
-        
+
+def donothing():
+    nothing = None   
 
 # function for refreshing token from ecobee
 def ecobee_refresh_tokens(ecobee_service):
@@ -233,7 +240,7 @@ def mqtt_on_connect(client, userdata, flags, rc):
 
 # call back for when a public message is received by the server
 def mqtt_on_message(client, userdata, msg):
-    logger.info(msg.topic + ' ' + str(msg.payload))
+    donothing()
 
 # function for writing to ecobee persistent db
 def persist_to_shelf(file_name, ecobee_service):
