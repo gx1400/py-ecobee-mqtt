@@ -103,7 +103,7 @@ def main():
         else:
             time.sleep(1)
             loopct += 1
-            
+
     logger.info('Exiting program')
 
 def ecobee_authorize(ecobee_service):
@@ -171,6 +171,8 @@ def ecobee_mqtt():
     #testing extracting data from json obj
     # docs here: https://pydoc.net/pyecobee/1.2.0/
     for item in thermostat_response.thermostat_list:
+        
+        # iterate through 'sensors' for temp/humidity/occupancy data
         for sensor in item.remote_sensors:
             logger.debug(sensor)
             roomname = sensor.name.replace(' ','-').lower()
@@ -180,6 +182,7 @@ def ecobee_mqtt():
                 pubtopic = topicname + cap.type
                 logger.debug(pubtopic)
                 msg = {
+                    'thermostat' : item.name,
                     'room': roomname,
                     'code': sensor.code,
                     'type': cap.type,
@@ -188,8 +191,36 @@ def ecobee_mqtt():
                 logger.debug(msg)
                 client.publish(pubtopic, json.dumps(msg), 0, False)
 
-        #logger.debug('equipmentStatus: ' + item.equipment_status)
-        #logger.debug('name: ' + item.name)
+        #log equipment status
+        eStatusList = item.equipment_status.split(',')
+        logger.debug('Equipment status: ' + json.dumps(eStatusList))
+        fanOn = ('fan' in eStatusList)
+        cool1On = ('compCool1' in eStatusList)
+        msg = {
+            'name': item.name,
+            'fan': ('fan' in eStatusList),
+            'compCool1': ('compCool1' in eStatusList),
+            'compCool2': ('compCool2' in eStatusList),
+            'auxHeat1': ('auxHeat1' in eStatusList),
+            'auxHeat2': ('auxHeat2' in eStatusList),
+            'auxHeat3': ('auxHeat3' in eStatusList),
+            'auxHotWater': ('auxHotWater' in eStatusList),
+            'compHotWater': ('compHotWater' in eStatusList),
+            'dehumidifier': ('dehumidifier' in eStatusList),
+            'economizer': ('economizer' in eStatusList),
+            'heatPump': ('heatPump' in eStatusList),
+            'heatPump2': ('heatPump2' in eStatusList),
+            'heatPump3': ('heatPump3' in eStatusList),
+            'humidifier': ('humidifier' in eStatusList),
+            'ventilator': ('ventilator' in eStatusList)
+        }
+        statusMsg = json.dumps(msg)
+        logger.debug(statusMsg)
+        statusTopic = mqttTopic  + 'runningStatus'
+        client.publish(statusTopic, statusMsg, 0, False)
+
+
+        #log runtime information
         #logger.debug(item.runtime)
 
 def donothing():
