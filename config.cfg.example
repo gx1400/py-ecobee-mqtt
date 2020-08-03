@@ -1,7 +1,8 @@
 [mqtt]
-ipaddr = yourMqttServerIP
+ipaddr = 'yourMqttServerIP'
 port = 1883
-topic = yourMqtt/tokenName/here
+topic = 'yourMqtt/tokenName/here'
 
 [ecobee]
-token = yourTokenHere
+token = 'yourTokenHere'
+thermostatname = 'My ecobee'

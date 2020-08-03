@@ -39,6 +39,7 @@ mqttAddr = 'not loaded'
 mqttPort = -1
 mqttTopic = 'not loaded'
 tokenEcobee = 'not loaded'
+nameEcobee = 'not loaded'
 
 '''
 ******* Functions
@@ -83,11 +84,12 @@ def readConfig():
 
     global mqttAddr, mqttPort, mqttTopic, tokenEcobee
 
-    mqttAddr = parser.get('mqtt', 'ipaddr')
+    mqttAddr = parser.get('mqtt', 'ipaddr').strip('\'')
     mqttPort = parser.getint('mqtt', 'port')
-    mqttTopic = parser.get('mqtt', 'topic')
+    mqttTopic = parser.get('mqtt', 'topic').strip('\'')
 
-    tokenEcobee = parser.get('ecobee', 'token')
+    tokenEcobee = parser.get('ecobee', 'token').strip('\'')
+    nameEcobee = parser.get('ecobee', 'thermostatname').strip('\'')
 
 if __name__ == "__main__":
     main()
