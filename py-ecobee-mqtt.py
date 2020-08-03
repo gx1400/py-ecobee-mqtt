@@ -189,7 +189,7 @@ def ecobee_mqtt():
         for sensor in item.remote_sensors:
             logger.debug(sensor)
             roomname = sensor.name.replace(' ','-').lower()
-            topicname = mqttTopic + roomname + '/'
+            topicname = mqttTopic + 'sensor/' + roomname + '/'
             
             for cap in sensor.capability:
                 pubtopic = topicname + cap.type
@@ -244,11 +244,17 @@ def ecobee_mqtt():
             'desiredCool': item.runtime.desired_cool /10,
             'desiredHum': item.runtime.desired_humidity ,
             'desiredDeHum': item.runtime.desired_dehumidity,
-            'desiredFanMode': item.runtime.desired_fan_mode
+            'desiredFanMode': item.runtime.desired_fan_mode,
+            'desiredHeatRangeLow': item.runtime.desired_heat_range[0] /10,
+            'desiredHeatRangeHigh': item.runtime.desired_heat_range[1] /10,
+            'desiredCoolRangeLow': item.runtime.desired_cool_range[0] /10,
+            'desiredCoolRangeHigh': item.runtime.desired_cool_range[1] /10
+            
         }
         rtMsg = json.dumps(msg)
         logger.debug(rtMsg)
-
+        rtTopic = mqttTopic + 'setpoints'
+        client.publish(rtTopic, rtMsg, 0, False)
 
 def donothing():
     nothing = None   
