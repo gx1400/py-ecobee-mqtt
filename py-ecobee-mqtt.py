@@ -237,7 +237,7 @@ def ecobee_mqtt():
 
 
         #log runtime information
-        logger.debug(item.runtime)
+        #logger.debug(item.runtime)
         msg = {
             'name': item.name,
             'desiredHeat': item.runtime.desired_heat /10,
