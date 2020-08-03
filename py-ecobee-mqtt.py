@@ -153,13 +153,13 @@ def ecobee_log():
         thermostat_response.pretty_format())
     
     #testing extracting data from json obj
+    # docs here: https://pydoc.net/pyecobee/1.2.0/
     for item in thermostat_response.thermostat_list:
         for sensor in item.remote_sensors:
             logger.debug(sensor)
         logger.debug('equipmentStatus: ' + item.equipment_status)
         logger.debug('name: ' + item.name)
         logger.debug(item.runtime)
-        logger.debug(item.utc_time)
         
 
 # function for refreshing token from ecobee
