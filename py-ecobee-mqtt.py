@@ -17,6 +17,13 @@ import os
 import sys
 from configparser import ConfigParser
 import paho.mqtt.client as mqtt
+from pyecobee import *
+
+import shelve
+from datetime import datetime
+
+import pytz
+from six.moves import input
 
 
 '''
@@ -35,23 +42,37 @@ __status__ = "Development"
 '''
 ******* Global vars
 '''
+logger = logging.getLogger(__name__)
 mqttAddr = 'not loaded'
 mqttPort = -1
 mqttTopic = 'not loaded'
 tokenEcobee = 'not loaded'
 nameEcobee = 'not loaded'
+dbFile = 'not loaded'
+ecobee_service = None
 
 '''
 ******* Functions
 '''
 def main():
+    formatter = logging.Formatter('%(asctime)s %(name)-18s %(levelname)-8s %(message)s')
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    logger.addHandler(stream_handler)
+    logger.setLevel(logging.DEBUG)
+
     # Read Config File parameters
-    readConfig()
+    read_config()
+
+    #try to connect to ecobee
+    ecobee_connect()
 
     # Connect to Mqtt
     client = mqtt.Client()
-    client.on_connect = on_connect
-    client.on_message = on_message
+    client.on_connect = mqtt_on_connect
+    client.on_message = mqtt_on_message
 
     try:
         print('Attempting to connect to mqtt server: ' + mqttAddr + 
@@ -63,8 +84,75 @@ def main():
 
     client.loop_forever()
 
+def ecobee_authorize(ecobee_service):
+    authorize_response = ecobee_service.authorize()
+    logger.debug('AutorizeResponse returned from ecobee_service.authorize():\n{0}'.format(
+        authorize_response.pretty_format()))
+
+    persist_to_shelf('pyecobee_db', ecobee_service)
+
+    logger.info('Please goto ecobee.com, login to the web portal and click on the settings tab. Ensure the My '
+                'Apps widget is enabled. If it is not click on the My Apps option in the menu on the left. In the '
+                'My Apps widget paste "{0}" and in the textbox labelled "Enter your 4 digit pin to '
+                'install your third party app" and then click "Install App". The next screen will display any '
+                'permissions the app requires and will ask you to click "Authorize" to add the application.\n\n'
+                'After completing this step please hit "Enter" to continue.'.format(
+        authorize_response.ecobee_pin))
+    input()
+
+# function for connecting to ecobee service
+def ecobee_connect():
+    global dbFile
+    global ecobee_service
+
+    try:
+        thisfolder = os.path.dirname(os.path.abspath(__file__))
+        dbFile = os.path.join(thisfolder, 'pyecobee_db')
+        pyecobee_db = shelve.open(dbFile, protocol=2)
+        ecobee_service = pyecobee_db[nameEcobee]
+    except KeyError:
+        ecobee_service = EcobeeService(thermostat_name=nameEcobee, application_key=tokenEcobee)
+    finally:
+        pyecobee_db.close()
+
+    if ecobee_service.authorization_token is None:
+        ecobee_authorize(ecobee_service)
+    else:
+        logger.debug('auth token: ' + ecobee_service.authorization_token)
+
+    if ecobee_service.access_token is None:
+        ecobee_request_tokens(ecobee_service)
+    else:
+        logger.debug('access token: ' + ecobee_service.access_token)
+    
+    now_utc = datetime.now(pytz.utc)
+    if now_utc > ecobee_service.refresh_token_expires_on:
+        ecobee_authorize(ecobee_service)
+        ecobee_request_tokens(ecobee_service)
+    elif now_utc > ecobee_service.access_token_expires_on:
+        token_response = ecobee_refresh_tokens(ecobee_service)
+    
+
+    sys.exit()
+
+# function for refreshing token from ecobee
+def ecobee_refresh_tokens(ecobee_service):
+    token_response = ecobee_service.refresh_tokens()
+    logger.debug('TokenResponse returned from ecobee_service.refresh_tokens():\n{0}'.format(
+        token_response.pretty_format()))
+
+    persist_to_shelf(dbFile, ecobee_service)
+
+# function for requesting token from ecobee
+def ecobee_request_tokens(ecobee_service):
+    token_response = ecobee_service.request_tokens()
+    logger.debug('TokenResponse returned from ecobee_service.request_tokens():\n{0}'.format(
+        token_response.pretty_format()))
+
+    persist_to_shelf(dbFile, ecobee_service)
+
 # call back for client connection to mqtt
-def on_connect(client, userdata, flags, rc):
+def mqtt_on_connect(client, userdata, flags, rc):
     print('Mqtt Connection result code: ' + str(rc))
 
     # subscribing in on_connect means if we lose the connection and 
@@ -72,11 +160,17 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe('$SYS/#')
 
 # call back for when a public message is received by the server
-def on_message(client, userdata, msg):
+def mqtt_on_message(client, userdata, msg):
     print(msg.topic + ' ' + str(msg.payload))
 
+# function for writing to ecobee persistent db
+def persist_to_shelf(file_name, ecobee_service):
+    pyecobee_db = shelve.open(file_name, protocol=2)
+    pyecobee_db[ecobee_service.thermostat_name] = ecobee_service
+    pyecobee_db.close()
+
 # function for reading the config.cfg file to set global operation params
-def readConfig():
+def read_config():
     parser = ConfigParser()
     thisfolder = os.path.dirname(os.path.abspath(__file__))
     configfile = os.path.join(thisfolder, 'config.cfg')
@@ -91,5 +185,6 @@ def readConfig():
     tokenEcobee = parser.get('ecobee', 'token').strip('\'')
     nameEcobee = parser.get('ecobee', 'thermostatname').strip('\'')
 
+# main function call
 if __name__ == "__main__":
     main()
