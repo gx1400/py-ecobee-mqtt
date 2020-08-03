@@ -25,6 +25,10 @@ from datetime import datetime
 import pytz
 from six.moves import input
 
+import json
+
+import logging
+
 
 '''
 ******* Header Vars
@@ -55,19 +59,21 @@ ecobee_service = None
 ******* Functions
 '''
 def main():
-    formatter = logging.Formatter('%(asctime)s %(name)-18s %(levelname)-8s %(message)s')
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
-
-    logger.addHandler(stream_handler)
-    logger.setLevel(logging.DEBUG)
+    
 
     # Read Config File parameters
     read_config()
 
+    logger_setup()
+
     #try to connect to ecobee
     ecobee_connect()
+    ecobee_log()
+    
+    #####################################
+    # WORK IN PROGRESS : DEBUGGING EXIT
+    sys.exit()
+    #####################################
 
     # Connect to Mqtt
     client = mqtt.Client()
@@ -75,11 +81,11 @@ def main():
     client.on_message = mqtt_on_message
 
     try:
-        print('Attempting to connect to mqtt server: ' + mqttAddr + 
+        logger.info('Attempting to connect to mqtt server: ' + mqttAddr + 
             ':' + str(mqttPort))
         client.connect(mqttAddr, mqttPort, 60)
     except:
-        print('failed to connect to mqtt.... aborting script')
+        logger.error('failed to connect to mqtt.... aborting script')
         sys.exit()
 
     client.loop_forever()
@@ -131,9 +137,30 @@ def ecobee_connect():
         ecobee_request_tokens(ecobee_service)
     elif now_utc > ecobee_service.access_token_expires_on:
         token_response = ecobee_refresh_tokens(ecobee_service)
-    
 
-    sys.exit()
+def ecobee_log():
+    selection = Selection(selection_type=SelectionType.REGISTERED.value, selection_match='', include_alerts=False,
+                      include_device=False, include_electricity=False, include_equipment_status=True,
+                      include_events=False, include_extended_runtime=False, include_house_details=False,
+                      include_location=False, include_management=False, include_notification_settings=False,
+                      include_oem_cfg=False, include_privacy=False, include_program=False, include_reminders=False,
+                      include_runtime=True, include_security_settings=False, include_sensors=True,
+                      include_settings=False, include_technician=False, include_utility=False, include_version=False,
+                      include_weather=False)
+    thermostat_response = ecobee_service.request_thermostats(selection)
+    #logger.debug(thermostat_response.pretty_format())
+    assert thermostat_response.status.code == 0, 'Failure while executing request_thermostats:\n{0}'.format(
+        thermostat_response.pretty_format())
+    
+    #testing extracting data from json obj
+    for item in thermostat_response.thermostat_list:
+        for sensor in item.remote_sensors:
+            logger.debug(sensor)
+        logger.debug('equipmentStatus: ' + item.equipment_status)
+        logger.debug('name: ' + item.name)
+        logger.debug(item.runtime)
+        logger.debug(item.utc_time)
+        
 
 # function for refreshing token from ecobee
 def ecobee_refresh_tokens(ecobee_service):
@@ -151,9 +178,24 @@ def ecobee_request_tokens(ecobee_service):
 
     persist_to_shelf(dbFile, ecobee_service)
 
+
+def logger_setup():
+    global logger
+    thisfolder = os.path.dirname(os.path.abspath(__file__))
+    logFile = os.path.join(thisfolder, 'logger.log')
+    logging.basicConfig(filename=logFile, level=logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s %(name)-18s %(levelname)-8s %(message)s')
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    logger.addHandler(stream_handler)
+    logger.setLevel(logging.DEBUG)
+    
+
 # call back for client connection to mqtt
 def mqtt_on_connect(client, userdata, flags, rc):
-    print('Mqtt Connection result code: ' + str(rc))
+    logger.info('Mqtt Connection result code: ' + str(rc))
 
     # subscribing in on_connect means if we lose the connection and 
     # reconnect then subscriptions will be renewed
@@ -161,7 +203,7 @@ def mqtt_on_connect(client, userdata, flags, rc):
 
 # call back for when a public message is received by the server
 def mqtt_on_message(client, userdata, msg):
-    print(msg.topic + ' ' + str(msg.payload))
+    logger.info(msg.topic + ' ' + str(msg.payload))
 
 # function for writing to ecobee persistent db
 def persist_to_shelf(file_name, ecobee_service):
