@@ -13,8 +13,7 @@
 ******* Imports 
 '''
 import requests
-import os
-import sys
+import os, sys, signal, time
 from configparser import ConfigParser
 import paho.mqtt.client as mqtt
 from pyecobee import * #https://github.com/sfanous/Pyecobee
@@ -54,12 +53,14 @@ tokenEcobee = 'not loaded'
 nameEcobee = 'not loaded'
 dbFile = 'not loaded'
 ecobee_service = None
+terminate = False
+client = None
 
 '''
 ******* Functions
 '''
 def main():
-    
+    global client
 
     # Read Config File parameters
     read_config()
@@ -68,13 +69,7 @@ def main():
 
     #try to connect to ecobee
     ecobee_connect()
-    ecobee_log()
     
-    #####################################
-    # WORK IN PROGRESS : DEBUGGING EXIT
-    sys.exit()
-    #####################################
-
     # Connect to Mqtt
     client = mqtt.Client()
     client.on_connect = mqtt_on_connect
@@ -88,7 +83,23 @@ def main():
         logger.error('failed to connect to mqtt.... aborting script')
         sys.exit()
 
-    client.loop_forever()
+    signal.signal(signal.SIGINT, signal_handler)
+
+    logger.info('Starting loop...')
+
+    #client.loop_forever()
+    client.loop_start()
+
+    while True:
+        logger.info('Start of loop')
+        time.sleep(10)
+        ecobee_mqtt()
+
+        if terminate:
+            mqtt_endloop()
+            break
+
+    logger.info('Exiting program')
 
 def ecobee_authorize(ecobee_service):
     authorize_response = ecobee_service.authorize()
@@ -138,7 +149,7 @@ def ecobee_connect():
     elif now_utc > ecobee_service.access_token_expires_on:
         token_response = ecobee_refresh_tokens(ecobee_service)
 
-def ecobee_log():
+def ecobee_mqtt():
     selection = Selection(selection_type=SelectionType.REGISTERED.value, selection_match='', include_alerts=False,
                       include_device=False, include_electricity=False, include_equipment_status=True,
                       include_events=False, include_extended_runtime=False, include_house_details=False,
@@ -170,6 +181,7 @@ def ecobee_log():
                     'value': cap.value
                 }
                 logger.debug(msg)
+                client.publish(pubtopic, json.dumps(msg), 0, False)
 
         #logger.debug('equipmentStatus: ' + item.equipment_status)
         #logger.debug('name: ' + item.name)
@@ -205,7 +217,11 @@ def logger_setup():
 
     logger.addHandler(stream_handler)
     logger.setLevel(logging.DEBUG)
-    
+
+def mqtt_endloop():
+    client.loop_stop()
+    logger.info('loop stopped!')
+    client.disconnect()
 
 # call back for client connection to mqtt
 def mqtt_on_connect(client, userdata, flags, rc):
@@ -240,6 +256,10 @@ def read_config():
 
     tokenEcobee = parser.get('ecobee', 'token').strip('\'')
     nameEcobee = parser.get('ecobee', 'thermostatname').strip('\'')
+
+def signal_handler(signum,frame):
+    global terminate
+    terminate = True
 
 # main function call
 if __name__ == "__main__":
