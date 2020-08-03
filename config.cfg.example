@@ -1,0 +1,7 @@
+[mqtt]
+ipaddr = yourMqttServerIP
+port = 1883
+topic = yourMqtt/tokenName/here
+
+[ecobee]
+token = yourTokenHere
