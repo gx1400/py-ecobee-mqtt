@@ -74,7 +74,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     print(msg.topic + ' ' + str(msg.payload))
 
-
+# function for reading the config.cfg file to set global operation params
 def readConfig():
     parser = ConfigParser()
     thisfolder = os.path.dirname(os.path.abspath(__file__))
