@@ -17,7 +17,7 @@ import os
 import sys
 from configparser import ConfigParser
 import paho.mqtt.client as mqtt
-from pyecobee import *
+from pyecobee import * #https://github.com/sfanous/Pyecobee
 
 import shelve
 from datetime import datetime
@@ -157,9 +157,23 @@ def ecobee_log():
     for item in thermostat_response.thermostat_list:
         for sensor in item.remote_sensors:
             logger.debug(sensor)
-        logger.debug('equipmentStatus: ' + item.equipment_status)
-        logger.debug('name: ' + item.name)
-        logger.debug(item.runtime)
+            roomname = sensor.name.replace(' ','-').lower()
+            topicname = mqttTopic + roomname + '/'
+            
+            for cap in sensor.capability:
+                pubtopic = topicname + cap.type
+                logger.debug(pubtopic)
+                msg = {
+                    'room': roomname,
+                    'code': sensor.code,
+                    'type': cap.type,
+                    'value': cap.value
+                }
+                logger.debug(msg)
+
+        #logger.debug('equipmentStatus: ' + item.equipment_status)
+        #logger.debug('name: ' + item.name)
+        #logger.debug(item.runtime)
         
 
 # function for refreshing token from ecobee
