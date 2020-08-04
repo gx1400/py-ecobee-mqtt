@@ -158,13 +158,14 @@ def ecobee_connect():
     ecobee_checktokens()
 
 def ecobee_mqtt():
+
     selection = Selection(selection_type=SelectionType.REGISTERED.value, selection_match='', include_alerts=False,
                       include_device=False, include_electricity=False, include_equipment_status=True,
                       include_events=False, include_extended_runtime=False, include_house_details=False,
                       include_location=False, include_management=False, include_notification_settings=False,
                       include_oem_cfg=False, include_privacy=False, include_program=False, include_reminders=False,
                       include_runtime=True, include_security_settings=False, include_sensors=True,
-                      include_settings=False, include_technician=False, include_utility=False, include_version=False,
+                      include_settings=True, include_technician=False, include_utility=False, include_version=False,
                       include_weather=False)
     
     # proactively try to refresh tokens, but if we hit the sweet spot, we'll try to react
@@ -197,7 +198,13 @@ def ecobee_mqtt():
 
                 parsedValue = cap.value
                 if (cap.type == 'temperature'):
-                    parsedValue = str(int(cap.value) / 10)
+                    parsedValue = int(cap.value) / 10
+                elif (cap.type == "humidity"): 
+                    parsedValue = int(cap.value)
+                elif (cap.type == "occupancy"):
+                    parsedValue = int(cap.value == True)
+                else:
+                    parsedValue = cap.value
 
                 msg = {
                     'thermostat' : item.name,
@@ -214,21 +221,21 @@ def ecobee_mqtt():
         #logger.debug('Equipment status: ' + json.dumps(eStatusList))
         msg = {
             'name': item.name,
-            'fan': ('fan' in eStatusList),
-            'compCool1': ('compCool1' in eStatusList),
-            'compCool2': ('compCool2' in eStatusList),
-            'auxHeat1': ('auxHeat1' in eStatusList),
-            'auxHeat2': ('auxHeat2' in eStatusList),
-            'auxHeat3': ('auxHeat3' in eStatusList),
-            'auxHotWater': ('auxHotWater' in eStatusList),
-            'compHotWater': ('compHotWater' in eStatusList),
-            'dehumidifier': ('dehumidifier' in eStatusList),
-            'economizer': ('economizer' in eStatusList),
-            'heatPump': ('heatPump' in eStatusList),
-            'heatPump2': ('heatPump2' in eStatusList),
-            'heatPump3': ('heatPump3' in eStatusList),
-            'humidifier': ('humidifier' in eStatusList),
-            'ventilator': ('ventilator' in eStatusList)
+            'fan': int('fan' in eStatusList),
+            'compCool1': int('compCool1' in eStatusList),
+            'compCool2': int('compCool2' in eStatusList),
+            'auxHeat1': int('auxHeat1' in eStatusList),
+            'auxHeat2': int('auxHeat2' in eStatusList),
+            'auxHeat3': int('auxHeat3' in eStatusList),
+            'auxHotWater': int('auxHotWater' in eStatusList),
+            'compHotWater': int('compHotWater' in eStatusList),
+            'dehumidifier': int('dehumidifier' in eStatusList),
+            'economizer': int('economizer' in eStatusList),
+            'heatPump': int('heatPump' in eStatusList),
+            'heatPump2': int('heatPump2' in eStatusList),
+            'heatPump3': int('heatPump3' in eStatusList),
+            'humidifier': int('humidifier' in eStatusList),
+            'ventilator': int('ventilator' in eStatusList)
         }
         statusMsg = json.dumps(msg)
         logger.debug(statusMsg)
