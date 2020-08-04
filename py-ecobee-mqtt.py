@@ -96,7 +96,7 @@ def main():
             mqtt_endloop()
             break
         
-        if (loopct >= 10):
+        if (loopct >= 90):
             logger.info('Start of loop')
             ecobee_mqtt()
             loopct = 0
@@ -245,6 +245,32 @@ def ecobee_mqtt():
 
         #log runtime information
         #logger.debug(item.runtime)
+
+        mode = item.settings.hvac_mode
+        logger.debug('mode: ' + mode)
+        setH = item.runtime.desired_cool /10
+        setL = item.runtime.desired_heat /10
+        setpointlow = 0
+        setpointhigh = 0
+        if (mode == 'auto'):
+            setpointlow = setL
+            setpointhigh = setH
+        elif (mode == 'cool'):
+            setpointlow = None
+            setpointhigh = setH
+        elif (mode == 'heat'):
+            setpointlow = setL
+            setpointhigh = None
+        elif (mode == 'off'):
+            setpointlow = None
+            setpointhigh = None
+        elif (mode == 'auxHeatOnly'): #how to handle?
+            setpointlow = setH
+            setpointhigh = None
+        else:
+            setpointlow = None
+            setpointhigh = None
+
         msg = {
             'name': item.name,
             'desiredHeat': item.runtime.desired_heat /10,
@@ -255,8 +281,9 @@ def ecobee_mqtt():
             'desiredHeatRangeLow': item.runtime.desired_heat_range[0] /10,
             'desiredHeatRangeHigh': item.runtime.desired_heat_range[1] /10,
             'desiredCoolRangeLow': item.runtime.desired_cool_range[0] /10,
-            'desiredCoolRangeHigh': item.runtime.desired_cool_range[1] /10
-            
+            'desiredCoolRangeHigh': item.runtime.desired_cool_range[1] /10,
+            'setpointlow' : setpointlow,
+            'setpointhigh': setpointhigh
         }
         rtMsg = json.dumps(msg)
         logger.debug(rtMsg)
