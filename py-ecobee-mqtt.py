@@ -278,10 +278,6 @@ def ecobee_mqtt():
             'desiredHum': item.runtime.desired_humidity ,
             'desiredDeHum': item.runtime.desired_dehumidity,
             'desiredFanMode': item.runtime.desired_fan_mode,
-            'desiredHeatRangeLow': item.runtime.desired_heat_range[0] /10,
-            'desiredHeatRangeHigh': item.runtime.desired_heat_range[1] /10,
-            'desiredCoolRangeLow': item.runtime.desired_cool_range[0] /10,
-            'desiredCoolRangeHigh': item.runtime.desired_cool_range[1] /10,
             'setpointlow' : setpointlow,
             'setpointhigh': setpointhigh
         }
