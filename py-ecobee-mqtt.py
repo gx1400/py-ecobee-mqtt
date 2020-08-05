@@ -96,7 +96,7 @@ def main():
             mqtt_endloop()
             break
         
-        if (loopct >= 90):
+        if (loopct >= 180):
             logger.info('Start of loop')
             ecobee_mqtt()
             loopct = 0
@@ -279,7 +279,8 @@ def ecobee_mqtt():
             'desiredDeHum': item.runtime.desired_dehumidity,
             'desiredFanMode': item.runtime.desired_fan_mode,
             'setpointlow' : setpointlow,
-            'setpointhigh': setpointhigh
+            'setpointhigh': setpointhigh,
+            'actualTemp' : item.runtime.actual_temperature /10
         }
         rtMsg = json.dumps(msg)
         logger.debug(rtMsg)
