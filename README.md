@@ -72,7 +72,7 @@ Response:
 You can either copy the *pyecobee_db* file created (and authorized) previously into your mapped -v db directory, or else use '-it' command below to reauthorize app
 ### Interactive authorization
 
-     winpty docker run -it -v "C:\Users\derek.ROWKAR\Documents\repos\py-ecobee-mqtt\log-docker":/app/log -v "C:\Users\derek.ROWKAR\Documents\repos\py-ecobee-mqtt\db-docker":/app/db py-ecobee-mqtt
+     winpty docker run -it -v "C:\Users\derek.ROWKAR\Documents\repos\py-ecobee-mqtt\log-docker":/app/log -v "C:\Users\derek.ROWKAR\Documents\repos\py-ecobee-mqtt\db-docker":/app/db -name py-ecobee-mqtt py-ecobee-mqtt
 winpty - Git Bash isn't a tty client, so can't use interactive mode, winpty lets us interact with docker run command
 
  - *winpty* : Git Bash isn't a tty client, so can't use interactive mode,
@@ -81,3 +81,11 @@ winpty - Git Bash isn't a tty client, so can't use interactive mode, winpty lets
  - *-v [local folder]:/app/log* : maps docker's log folder to a folder on your local PC so you can checkout logs
  - *-v [local folder]:/app/db* : maps docker's db folder to local PC so it stays authorized with ecobee.com persistently
  - *py-ecobee-mqtt* : this is the name of the container built above
+ 
+To exit, hit CTRL+C and container should continue running
+
+### Run detached
+
+Add "-d" to command above once it's running
+
+     winpty docker run -it -v "C:\Users\derek.ROWKAR\Documents\repos\py-ecobee-mqtt\log-docker":/app/log -v "C:\Users\derek.ROWKAR\Documents\repos\py-ecobee-mqtt\db-docker":/app/db -d -name py-ecobee-mqtt py-ecobee-mqtt
