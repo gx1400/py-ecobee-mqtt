@@ -27,7 +27,7 @@ from six.moves import input
 import json
 
 import logging
-
+from logging.handlers import TimedRotatingFileHandler
 
 '''
 ******* Header Vars
@@ -311,13 +311,19 @@ def logger_setup():
     global logger
     thisfolder = os.path.dirname(os.path.abspath(__file__))
     logFile = os.path.join(thisfolder, 'logger.log')
-    logging.basicConfig(filename=logFile, level=logging.DEBUG)
+
     formatter = logging.Formatter('%(asctime)s %(name)-18s %(levelname)-8s %(message)s')
+    handler = TimedRotatingFileHandler(logFile,
+                                       when="d",
+                                       interval=1,
+                                       backupCount=7)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
-
     logger.addHandler(stream_handler)
+
     logger.setLevel(logging.DEBUG)
 
 def mqtt_endloop():
