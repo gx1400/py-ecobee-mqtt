@@ -137,7 +137,7 @@ def ecobee_connect():
 
     try:
         thisfolder = os.path.dirname(os.path.abspath(__file__))
-        dbFile = os.path.join(thisfolder, 'pyecobee_db')
+        dbFile = os.path.join(thisfolder, 'db', 'pyecobee_db')
         pyecobee_db = shelve.open(dbFile, protocol=2)
         ecobee_service = pyecobee_db[nameEcobee]
     except KeyError:
@@ -310,7 +310,7 @@ def ecobee_request_tokens(ecobee_service):
 def logger_setup():
     global logger
     thisfolder = os.path.dirname(os.path.abspath(__file__))
-    logFile = os.path.join(thisfolder, 'logger.log')
+    logFile = os.path.join(thisfolder, 'log', 'logger.log')
 
     formatter = logging.Formatter('%(asctime)s %(name)-18s %(levelname)-8s %(message)s')
     handler = TimedRotatingFileHandler(logFile,
