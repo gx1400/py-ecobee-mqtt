@@ -91,19 +91,30 @@ def main():
     client.loop_start()
     loopct = 0
 
-    while True:
-        if terminate:
-            mqtt_endloop()
-            break
+    try:
+        while True:
+            if terminate:
+                mqtt_endloop()
+                break
         
-        if (loopct >= 180):
-            logger.info('Start of loop')
-            ecobee_mqtt()
-            loopct = 0
-        else:
-            time.sleep(1)
-            loopct += 1
-
+            if (loopct >= 180):
+                logger.info('Start of loop')
+                try:
+                    ecobee_mqtt()
+                except requests.ConnectionError:
+                    logger.error('Connection error!')
+                except requests.Timeout:
+                    logger.error('Timeout error')
+                except requests.RequestException as e:
+                    raise SystemExit(e)
+                loopct = 0
+            else:
+                time.sleep(1)
+                loopct += 1
+    except:
+        logger.error("Unexpected error:", sys.exc_info()[0])
+        
+    
     logger.info('Exiting program')
 
 def ecobee_authorize(ecobee_service):
@@ -202,7 +213,7 @@ def ecobee_mqtt():
                 elif (cap.type == "humidity"): 
                     parsedValue = int(cap.value)
                 elif (cap.type == "occupancy"):
-                    parsedValue = int(cap.value == True)
+                    parsedValue = int(cap.value == 'true')
                 else:
                     parsedValue = cap.value
 
